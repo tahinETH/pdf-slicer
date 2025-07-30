@@ -7,6 +7,16 @@ from werkzeug.utils import secure_filename
 import re
 from io import BytesIO
 from flask import send_file
+from groq import Groq
+from openai import OpenAI
+import tempfile
+import uuid
+from pydub import AudioSegment
+import math
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -14,14 +24,27 @@ CORS(app)
 # Configuration
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf'}
+ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma', 'opus'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB max file size
 
 # Create upload folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Initialize Groq client
+client = Groq()
+
+# Initialize OpenAI client
+openai_client = OpenAI()
+
+# Store for chunked audio files (in production, use Redis or database)
+audio_chunks_store = {}
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def allowed_audio_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_AUDIO_EXTENSIONS
 
 def extract_toc_from_pdf(pdf_path):
     """Extract table of contents from PDF"""
@@ -184,6 +207,14 @@ def extract_text_from_pages(pdf_path, start_page, end_page):
 def index():
     return send_from_directory('.', 'index.html')
 
+@app.route('/pdf-slicer')
+def pdf_slicer():
+    return send_from_directory('.', 'pdf_slicer.html')
+
+@app.route('/transcriber')
+def transcriber():
+    return send_from_directory('.', 'transcriber.html')
+
 @app.route('/upload', methods=['POST'])
 def upload_pdf():
     if 'file' not in request.files:
@@ -283,5 +314,261 @@ def crop_pdf():
     except Exception as e:
         return jsonify({'error': f'Failed to crop PDF: {str(e)}'}), 500
 
+def chunk_audio_file(file_path, chunk_duration_ms=300000):  # 5 minutes chunks
+    """Split audio file into chunks for processing"""
+    try:
+        # Load audio file
+        audio = AudioSegment.from_file(file_path)
+        
+        # Calculate number of chunks needed
+        total_duration = len(audio)
+        num_chunks = math.ceil(total_duration / chunk_duration_ms)
+        
+        chunks = []
+        for i in range(num_chunks):
+            start_time = i * chunk_duration_ms
+            end_time = min(start_time + chunk_duration_ms, total_duration)
+            
+            # Extract chunk
+            chunk = audio[start_time:end_time]
+            
+            # Save chunk to temporary file
+            chunk_id = str(uuid.uuid4())
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+            chunk.export(temp_file.name, format='wav')
+            
+            chunks.append({
+                'id': chunk_id,
+                'file_path': temp_file.name,
+                'start_time': start_time / 1000,  # Convert to seconds
+                'end_time': end_time / 1000,
+                'duration': (end_time - start_time) / 1000
+            })
+        
+        return chunks
+    except Exception as e:
+        print(f"Error chunking audio: {str(e)}")
+        return None
+
+def transcribe_audio_chunk(file_path):
+    """Transcribe a single audio chunk using Groq Whisper"""
+    try:
+        with open(file_path, "rb") as file:
+            transcription = client.audio.transcriptions.create(
+                file=(os.path.basename(file_path), file.read()),
+                model="whisper-large-v3",
+                response_format="verbose_json",
+            )
+            return transcription.text
+    except Exception as e:
+        print(f"Error transcribing audio chunk: {str(e)}")
+        raise e
+
+def clean_transcript_with_llm(transcript):
+    """Clean up transcript using GPT-4.1 to make it more coherent"""
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4.1",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are a professional transcript editor. Your job is to clean up and improve the coherence of audio transcripts while preserving the original meaning and content. 
+
+Please:
+- Fix grammatical errors and improve sentence structure
+- Remove unnecessary filler words (um, uh, like, you know, etc.) but keep natural speech patterns
+- Correct obvious transcription errors
+- Improve punctuation and capitalization
+- Break up run-on sentences into more readable segments
+- Maintain the speaker's original tone and meaning
+- Do not add new information or change the core message
+
+Return only the cleaned transcript without any additional commentary."""
+                },
+                {
+                    "role": "user",
+                    "content": f"Please clean up this transcript:\n\n{transcript}"
+                }
+            ],
+            temperature=0.3,
+            max_tokens=4000
+        )
+        
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error cleaning transcript: {str(e)}")
+        raise e
+
+def summarize_transcript_with_llm(transcript):
+    """Summarize transcript using GPT-4.1"""
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4.1",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are a professional summarizer. Create a concise, well-structured summary of the given transcript that captures the key points, main ideas, and important details.
+
+Please:
+- Identify and highlight the main topics and themes
+- Preserve important details and specific information
+- Use clear, professional language
+- Structure the summary with bullet points or paragraphs as appropriate
+- Include key quotes or statements when relevant
+- Maintain objectivity and accuracy
+
+Format your response with:
+1. A brief overview paragraph
+2. Key points in bullet format
+3. Any important conclusions or action items (if applicable)"""
+                },
+                {
+                    "role": "user",
+                    "content": f"Please summarize this transcript:\n\n{transcript}"
+                }
+            ],
+            temperature=0.3,
+            max_tokens=1500
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error summarizing transcript: {str(e)}")
+        raise e
+
+@app.route('/transcribe', methods=['POST'])
+def transcribe_audio():
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
+    
+    file = request.files['audio']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not allowed_audio_file(file.filename):
+        return jsonify({'error': 'Invalid audio file type'}), 400
+    
+    try:
+        # Save uploaded file
+        filename = secure_filename(file.filename)
+        file_id = str(uuid.uuid4())
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{file_id}_{filename}")
+        file.save(filepath)
+        
+        # Check file size - if under 19MB, process directly
+        file_size = os.path.getsize(filepath)
+        max_direct_size = 19 * 1024 * 1024  # 19MB
+        
+        if file_size <= max_direct_size:
+            # Direct transcription
+            try:
+                transcription_text = transcribe_audio_chunk(filepath)
+                
+                # Clean up
+                os.remove(filepath)
+                
+                return jsonify({
+                    'transcription': transcription_text,
+                    'chunks': None
+                })
+            except Exception as e:
+                os.remove(filepath)
+                return jsonify({'error': f'Transcription failed: {str(e)}'}), 500
+        else:
+            # File too large, need chunking
+            chunks = chunk_audio_file(filepath)
+            if not chunks:
+                os.remove(filepath)
+                return jsonify({'error': 'Failed to process audio file'}), 500
+            
+            # Store chunks info for later processing
+            audio_chunks_store[file_id] = {
+                'original_file': filepath,
+                'chunks': chunks
+            }
+            
+            # Return chunk information
+            return jsonify({
+                'file_id': file_id,
+                'chunks': [
+                    {
+                        'id': chunk['id'],
+                        'start_time': chunk['start_time'],
+                        'end_time': chunk['end_time'],
+                        'duration': chunk['duration']
+                    }
+                    for chunk in chunks
+                ],
+                'transcription': None
+            })
+            
+    except Exception as e:
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+
+@app.route('/transcribe-chunk', methods=['POST'])
+def transcribe_chunk():
+    data = request.json
+    chunk_id = data.get('chunk_id')
+    file_id = data.get('file_id')
+    
+    if not chunk_id or not file_id:
+        return jsonify({'error': 'Missing chunk_id or file_id'}), 400
+    
+    if file_id not in audio_chunks_store:
+        return jsonify({'error': 'File not found'}), 404
+    
+    # Find the specific chunk
+    chunks = audio_chunks_store[file_id]['chunks']
+    chunk = next((c for c in chunks if c['id'] == chunk_id), None)
+    
+    if not chunk:
+        return jsonify({'error': 'Chunk not found'}), 404
+    
+    try:
+        # Transcribe the chunk
+        transcription_text = transcribe_audio_chunk(chunk['file_path'])
+        
+        # Clean up chunk file
+        os.remove(chunk['file_path'])
+        
+        return jsonify({
+            'transcription': transcription_text,
+            'chunk_id': chunk_id
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Chunk transcription failed: {str(e)}'}), 500
+
+@app.route('/clean-transcript', methods=['POST'])
+def clean_transcript():
+    data = request.json
+    transcript = data.get('transcript')
+    
+    if not transcript:
+        return jsonify({'error': 'No transcript provided'}), 400
+    
+    try:
+        cleaned_transcript = clean_transcript_with_llm(transcript)
+        return jsonify({
+            'cleaned_transcript': cleaned_transcript
+        })
+    except Exception as e:
+        return jsonify({'error': f'Failed to clean transcript: {str(e)}'}), 500
+
+@app.route('/summarize-transcript', methods=['POST'])
+def summarize_transcript():
+    data = request.json
+    transcript = data.get('transcript')
+    
+    if not transcript:
+        return jsonify({'error': 'No transcript provided'}), 400
+    
+    try:
+        summary = summarize_transcript_with_llm(transcript)
+        return jsonify({
+            'summary': summary
+        })
+    except Exception as e:
+        return jsonify({'error': f'Failed to summarize transcript: {str(e)}'}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000) 
+    app.run(debug=True, port=9001) 

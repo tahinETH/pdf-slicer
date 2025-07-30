@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Transcriber - Groq Whisper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1rem 0;
+            margin-bottom: 1rem;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+
+        nav a:hover, nav a.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-area.dragging {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .file-info {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .file-size {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-decoration: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .transcription-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .transcription-tabs {
+            display: flex;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #666;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .transcription-output {
+            background: #f8f9ff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            min-height: 200px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .transcription-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .transcription-output::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .transcription-output::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .transcription-output::-webkit-scrollbar-thumb:hover {
+            background: #5563d1;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .progress-section {
+            margin: 2rem 0;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .chunk-info {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .chunk-info h4 {
+            color: #856404;
+            margin-bottom: 0.5rem;
+        }
+
+        .chunk-list {
+            list-style: none;
+            margin-top: 0.5rem;
+        }
+
+        .chunk-list li {
+            padding: 0.25rem 0;
+            font-size: 0.9rem;
+        }
+
+        .chunk-status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .chunk-status.pending {
+            background: #ffc107;
+        }
+
+        .chunk-status.processing {
+            background: #17a2b8;
+            animation: pulse 1s infinite;
+        }
+
+        .chunk-status.completed {
+            background: #28a745;
+        }
+
+        .chunk-status.error {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+
+        .warning-message {
+            background: #fff3cd;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+
+        .supported-formats {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .supported-formats h4 {
+            color: #0c5460;
+            margin-bottom: 0.5rem;
+        }
+
+        .format-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .format-tag {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+
+        .processing-options {
+            background: #f8f9ff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .processing-options h4 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .option-checkboxes {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: #333;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkmark {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #667eea;
+            border-radius: 4px;
+            margin-right: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkmark {
+            background: #667eea;
+            color: white;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .checkbox-label:hover .checkmark {
+            border-color: #5563d1;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/">🛠️ Home</a>
+                <a href="/pdf-slicer">📄 PDF Slicer</a>
+                <a href="/transcriber" class="active">🎤 Transcriber</a>
+            </nav>
+            <h1>🎤 Audio Transcriber</h1>
+            <p class="subtitle">Transcribe audio files using Groq's Whisper API</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">🎵</div>
+                <p>Drag and drop your audio file here or click to browse</p>
+                <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 0.5rem;">Maximum file size: 19.5MB</p>
+                <input type="file" id="fileInput" accept="audio/*">
+            </div>
+
+            <div class="supported-formats">
+                <h4>Supported Formats</h4>
+                <div class="format-list">
+                    <span class="format-tag">MP3</span>
+                    <span class="format-tag">WAV</span>
+                    <span class="format-tag">M4A</span>
+                    <span class="format-tag">AAC</span>
+                    <span class="format-tag">OGG</span>
+                    <span class="format-tag">FLAC</span>
+                    <span class="format-tag">WMA</span>
+                    <span class="format-tag">OPUS</span>
+                </div>
+            </div>
+
+            <div id="fileInfo" class="file-info hidden">
+                <div class="file-details">
+                    <span>📄 <span id="fileName"></span></span>
+                    <span class="file-size" id="fileSize"></span>
+                </div>
+                <button class="btn btn-danger" onclick="removeFile()">Remove</button>
+            </div>
+
+            <div id="processingOptions" class="processing-options hidden">
+                <h4>AI Processing Options</h4>
+                <div class="option-checkboxes">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoClean" checked>
+                        <span class="checkmark"></span>
+                        ✨ Auto-clean transcript with AI
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="autoSummarize">
+                        <span class="checkmark"></span>
+                        📝 Auto-summarize transcript with AI
+                    </label>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="transcribeBtn" class="btn" onclick="startTranscription()" disabled>
+                    🎯 Start Transcription
+                </button>
+            </div>
+        </div>
+
+        <div id="progressSection" class="progress-section hidden">
+            <h3>Transcription Progress</h3>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div id="progressText" class="progress-text">Preparing...</div>
+            
+            <div id="chunkInfo" class="chunk-info hidden">
+                <h4>Processing Chunks</h4>
+                <p>Large files are split into smaller chunks for processing.</p>
+                <ul id="chunkList" class="chunk-list"></ul>
+            </div>
+        </div>
+
+        <div id="transcriptionSection" class="transcription-section hidden">
+            <h3>Transcription Result</h3>
+            <div class="transcription-tabs">
+                <button class="tab-btn active" onclick="switchTab('raw')">Raw Transcript</button>
+                <button class="tab-btn" onclick="switchTab('cleaned')">Cleaned</button>
+                <button class="tab-btn" onclick="switchTab('summary')">Summary</button>
+            </div>
+            <div id="rawTranscript" class="transcription-output tab-content active"></div>
+            <div id="cleanedTranscript" class="transcription-output tab-content hidden"></div>
+            <div id="summaryTranscript" class="transcription-output tab-content hidden"></div>
+            <div class="action-buttons">
+                <button id="cleanBtn" class="btn" onclick="cleanTranscription()">
+                    ✨ Clean with AI
+                </button>
+                <button id="summarizeBtn" class="btn" onclick="summarizeTranscription()">
+                    📝 Summarize with AI
+                </button>
+                <button id="copyBtn" class="btn" onclick="copyCurrentTab()">
+                    📋 Copy to Clipboard
+                </button>
+                <button id="downloadBtn" class="btn btn-secondary" onclick="downloadCurrentTab()">
+                    💾 Download as Text
+                </button>
+                <button id="clearBtn" class="btn btn-danger" onclick="clearTranscription()">
+                    🗑️ Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFile = null;
+        let transcriptionResult = '';
+        let cleanedResult = '';
+        let summaryResult = '';
+        let isTranscribing = false;
+        let currentTab = 'raw';
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const transcribeBtn = document.getElementById('transcribeBtn');
+        const progressSection = document.getElementById('progressSection');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const chunkInfo = document.getElementById('chunkInfo');
+        const chunkList = document.getElementById('chunkList');
+        const transcriptionSection = document.getElementById('transcriptionSection');
+        const rawTranscript = document.getElementById('rawTranscript');
+        const cleanedTranscript = document.getElementById('cleanedTranscript');
+        const summaryTranscript = document.getElementById('summaryTranscript');
+        const processingOptions = document.getElementById('processingOptions');
+        const autoClean = document.getElementById('autoClean');
+        const autoSummarize = document.getElementById('autoSummarize');
+
+        // Upload area click handler
+        uploadArea.addEventListener('click', () => {
+            if (!isTranscribing) {
+                fileInput.click();
+            }
+        });
+
+        // File input change handler
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFileSelection(file);
+            }
+        });
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!isTranscribing) {
+                uploadArea.classList.add('dragging');
+            }
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragging');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragging');
+            
+            if (isTranscribing) return;
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('audio/')) {
+                handleFileSelection(file);
+            } else {
+                showError('Please upload an audio file');
+            }
+        });
+
+        function handleFileSelection(file) {
+            // Check file size (19.5MB limit)
+            const maxSize = 19.5 * 1024 * 1024; // 19.5MB in bytes
+            if (file.size > maxSize) {
+                showError('File size exceeds 19.5MB limit. Please choose a smaller file.');
+                return;
+            }
+
+            currentFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            
+            fileInfo.classList.remove('hidden');
+            processingOptions.classList.remove('hidden');
+            transcribeBtn.disabled = false;
+            
+            // Hide previous results
+            transcriptionSection.classList.add('hidden');
+            progressSection.classList.add('hidden');
+        }
+
+        function removeFile() {
+            currentFile = null;
+            fileInfo.classList.add('hidden');
+            processingOptions.classList.add('hidden');
+            transcribeBtn.disabled = true;
+            fileInput.value = '';
+            
+            // Hide sections
+            transcriptionSection.classList.add('hidden');
+            progressSection.classList.add('hidden');
+        }
+
+        async function startTranscription() {
+            if (!currentFile || isTranscribing) return;
+
+            // Reset previous results
+            transcriptionResult = '';
+            cleanedResult = '';
+            summaryResult = '';
+            rawTranscript.textContent = '';
+            cleanedTranscript.textContent = '';
+            summaryTranscript.textContent = '';
+            transcriptionSection.classList.add('hidden');
+
+            isTranscribing = true;
+            transcribeBtn.disabled = true;
+            transcribeBtn.innerHTML = '<div class="loading"></div> Transcribing...';
+            
+            // Show progress section
+            progressSection.classList.remove('hidden');
+            progressFill.style.width = '0%';
+            progressText.textContent = 'Uploading file...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('audio', currentFile);
+
+                const response = await fetch('/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    if (result.chunks && result.chunks.length > 1) {
+                        // Handle chunked transcription
+                        await handleChunkedTranscription(result);
+                    } else {
+                        // Single file transcription
+                        progressFill.style.width = '100%';
+                        progressText.textContent = 'Transcription completed!';
+                        displayTranscription(result.transcription);
+                    }
+                } else {
+                    throw new Error(result.error || 'Transcription failed');
+                }
+            } catch (error) {
+                showError('Transcription failed: ' + error.message);
+                progressSection.classList.add('hidden');
+            } finally {
+                isTranscribing = false;
+                transcribeBtn.disabled = false;
+                transcribeBtn.innerHTML = '🎯 Start Transcription';
+            }
+        }
+
+        async function handleChunkedTranscription(result) {
+            const chunks = result.chunks;
+            chunkInfo.classList.remove('hidden');
+            
+            // Create chunk status list
+            chunkList.innerHTML = '';
+            chunks.forEach((chunk, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="chunk-status pending" id="chunk-${index}"></span>
+                    Chunk ${index + 1}: ${chunk.start_time}s - ${chunk.end_time}s
+                `;
+                chunkList.appendChild(li);
+            });
+
+            let completedChunks = 0;
+            const transcriptions = [];
+
+            // Process chunks sequentially to avoid rate limiting
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                const statusElement = document.getElementById(`chunk-${i}`);
+                
+                try {
+                    // Update status to processing
+                    statusElement.classList.remove('pending');
+                    statusElement.classList.add('processing');
+                    progressText.textContent = `Processing chunk ${i + 1} of ${chunks.length}...`;
+                    
+                    const response = await fetch('/transcribe-chunk', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            chunk_id: chunk.id,
+                            file_id: result.file_id
+                        })
+                    });
+
+                    const chunkResult = await response.json();
+                    
+                    if (response.ok) {
+                        transcriptions[i] = chunkResult.transcription;
+                        statusElement.classList.remove('processing');
+                        statusElement.classList.add('completed');
+                        completedChunks++;
+                        
+                        // Update progress
+                        const progress = (completedChunks / chunks.length) * 100;
+                        progressFill.style.width = `${progress}%`;
+                    } else {
+                        throw new Error(chunkResult.error || 'Chunk transcription failed');
+                    }
+                } catch (error) {
+                    statusElement.classList.remove('processing');
+                    statusElement.classList.add('error');
+                    showError(`Chunk ${i + 1} failed: ${error.message}`);
+                    return;
+                }
+            }
+
+            // Combine all transcriptions
+            const combinedTranscription = transcriptions.join(' ');
+            progressText.textContent = 'All chunks completed!';
+            displayTranscription(combinedTranscription);
+        }
+
+        async function displayTranscription(text) {
+            transcriptionResult = text;
+            rawTranscript.textContent = text;
+            transcriptionSection.classList.remove('hidden');
+            
+            // Reset to raw tab initially
+            switchTab('raw');
+            
+            // Scroll to transcription section
+            transcriptionSection.scrollIntoView({ behavior: 'smooth' });
+            
+            // Auto-process based on selected options
+            const shouldClean = autoClean.checked;
+            const shouldSummarize = autoSummarize.checked;
+            
+            if (shouldClean) {
+                await autoCleanTranscription();
+            }
+            
+            if (shouldSummarize) {
+                await autoSummarizeTranscription();
+            }
+            
+            // Switch to cleaned tab if auto-clean was selected, otherwise stay on raw
+            if (shouldClean) {
+                switchTab('cleaned');
+            }
+        }
+
+        async function autoCleanTranscription() {
+            try {
+                const response = await fetch('/clean-transcript', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        transcript: transcriptionResult
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    cleanedResult = result.cleaned_transcript;
+                    cleanedTranscript.textContent = cleanedResult;
+                } else {
+                    console.error('Failed to auto-clean:', result.error);
+                    showWarning('Auto-cleaning failed, but transcription is complete');
+                }
+            } catch (error) {
+                console.error('Auto-clean error:', error);
+                showWarning('Auto-cleaning failed, but transcription is complete');
+            }
+        }
+
+        async function autoSummarizeTranscription() {
+            try {
+                const response = await fetch('/summarize-transcript', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        transcript: transcriptionResult
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    summaryResult = result.summary;
+                    summaryTranscript.textContent = summaryResult;
+                } else {
+                    console.error('Failed to auto-summarize:', result.error);
+                    showWarning('Auto-summarization failed, but transcription is complete');
+                }
+            } catch (error) {
+                console.error('Auto-summarize error:', error);
+                showWarning('Auto-summarization failed, but transcription is complete');
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+                content.classList.add('hidden');
+            });
+            
+            // Show selected tab
+            if (tab === 'raw') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'raw\')"]').classList.add('active');
+                rawTranscript.classList.add('active');
+                rawTranscript.classList.remove('hidden');
+            } else if (tab === 'cleaned') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'cleaned\')"]').classList.add('active');
+                cleanedTranscript.classList.add('active');
+                cleanedTranscript.classList.remove('hidden');
+            } else if (tab === 'summary') {
+                document.querySelector('.tab-btn[onclick="switchTab(\'summary\')"]').classList.add('active');
+                summaryTranscript.classList.add('active');
+                summaryTranscript.classList.remove('hidden');
+            }
+        }
+
+        async function cleanTranscription() {
+            if (!transcriptionResult) {
+                showError('No transcript to clean');
+                return;
+            }
+
+            const cleanBtn = document.getElementById('cleanBtn');
+            const originalText = cleanBtn.innerHTML;
+            cleanBtn.innerHTML = '<div class="loading"></div> Cleaning...';
+            cleanBtn.disabled = true;
+
+            try {
+                const response = await fetch('/clean-transcript', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        transcript: transcriptionResult
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    cleanedResult = result.cleaned_transcript;
+                    cleanedTranscript.textContent = cleanedResult;
+                    switchTab('cleaned');
+                    showSuccess('Transcript cleaned successfully!');
+                } else {
+                    throw new Error(result.error || 'Failed to clean transcript');
+                }
+            } catch (error) {
+                showError('Failed to clean transcript: ' + error.message);
+            } finally {
+                cleanBtn.innerHTML = originalText;
+                cleanBtn.disabled = false;
+            }
+        }
+
+        async function summarizeTranscription() {
+            if (!transcriptionResult) {
+                showError('No transcript to summarize');
+                return;
+            }
+
+            const summarizeBtn = document.getElementById('summarizeBtn');
+            const originalText = summarizeBtn.innerHTML;
+            summarizeBtn.innerHTML = '<div class="loading"></div> Summarizing...';
+            summarizeBtn.disabled = true;
+
+            try {
+                const response = await fetch('/summarize-transcript', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        transcript: transcriptionResult
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    summaryResult = result.summary;
+                    summaryTranscript.textContent = summaryResult;
+                    switchTab('summary');
+                    showSuccess('Transcript summarized successfully!');
+                } else {
+                    throw new Error(result.error || 'Failed to summarize transcript');
+                }
+            } catch (error) {
+                showError('Failed to summarize transcript: ' + error.message);
+            } finally {
+                summarizeBtn.innerHTML = originalText;
+                summarizeBtn.disabled = false;
+            }
+        }
+
+        async function copyCurrentTab() {
+            let textToCopy = '';
+            let tabName = '';
+            
+            if (currentTab === 'raw') {
+                textToCopy = transcriptionResult;
+                tabName = 'raw transcript';
+            } else if (currentTab === 'cleaned') {
+                textToCopy = cleanedResult;
+                tabName = 'cleaned transcript';
+            } else if (currentTab === 'summary') {
+                textToCopy = summaryResult;
+                tabName = 'summary';
+            }
+            
+            if (!textToCopy) {
+                showError(`No ${tabName} to copy`);
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                
+                const copyBtn = document.getElementById('copyBtn');
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = '✓ Copied!';
+                copyBtn.style.background = '#28a745';
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.style.background = '';
+                }, 2000);
+            } catch (error) {
+                showError('Failed to copy text');
+            }
+        }
+
+        function downloadCurrentTab() {
+            let textToDownload = '';
+            let filename = '';
+            
+            if (currentTab === 'raw') {
+                textToDownload = transcriptionResult;
+                filename = 'raw_transcription';
+            } else if (currentTab === 'cleaned') {
+                textToDownload = cleanedResult;
+                filename = 'cleaned_transcription';
+            } else if (currentTab === 'summary') {
+                textToDownload = summaryResult;
+                filename = 'transcript_summary';
+            }
+            
+            if (!textToDownload) {
+                showError(`No content to download`);
+                return;
+            }
+            
+            const blob = new Blob([textToDownload], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showSuccess('File downloaded successfully!');
+        }
+
+        function clearTranscription() {
+            transcriptionResult = '';
+            cleanedResult = '';
+            summaryResult = '';
+            rawTranscript.textContent = '';
+            cleanedTranscript.textContent = '';
+            summaryTranscript.textContent = '';
+            transcriptionSection.classList.add('hidden');
+            progressSection.classList.add('hidden');
+            chunkInfo.classList.add('hidden');
+            processingOptions.classList.add('hidden');
+            switchTab('raw');
+            
+            // Reset file input and options
+            currentFile = null;
+            fileInfo.classList.add('hidden');
+            transcribeBtn.disabled = true;
+            fileInput.value = '';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showError(message) {
+            showMessage(message, 'error');
+        }
+
+        function showSuccess(message) {
+            showMessage(message, 'success');
+        }
+
+        function showWarning(message) {
+            showMessage(message, 'warning');
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type + '-message';
+            messageDiv.textContent = message;
+            
+            // Insert after upload section
+            const uploadSection = document.querySelector('.upload-section');
+            uploadSection.parentNode.insertBefore(messageDiv, uploadSection.nextSibling);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html> 

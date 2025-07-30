@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Slicer - Extract TOC & Text</title>
+    <title>My Tools - Personal Utility Hub</title>
     <style>
         * {
             margin: 0;
@@ -33,411 +33,99 @@
         }
 
         h1 {
-            font-size: 2.5rem;
+            font-size: 3rem;
             margin-bottom: 0.5rem;
         }
 
         .subtitle {
             opacity: 0.9;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
         }
 
-        .upload-section {
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .tool-card {
             background: white;
             border-radius: 12px;
             padding: 2rem;
-            margin: 2rem 0;
             box-shadow: 0 2px 20px rgba(0,0,0,0.1);
-        }
-
-        .upload-area {
-            border: 2px dashed #667eea;
-            border-radius: 8px;
-            padding: 3rem;
-            text-align: center;
             transition: all 0.3s ease;
-            cursor: pointer;
-            background: #f8f9ff;
+            text-decoration: none;
+            color: inherit;
+            display: block;
         }
 
-        .upload-area:hover {
-            border-color: #764ba2;
-            background: #f0f2ff;
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         }
 
-        .upload-area.dragging {
-            background: #e8ebff;
-            border-color: #764ba2;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .upload-icon {
+        .tool-icon {
             font-size: 3rem;
             margin-bottom: 1rem;
         }
 
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 0.75rem 2rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: inline-block;
-            text-decoration: none;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-        }
-
-        .content-section {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .toc-panel, .text-panel {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
-            height: 600px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .toc-panel h2, .text-panel h2 {
+        .tool-title {
+            font-size: 1.5rem;
+            font-weight: 600;
             margin-bottom: 1rem;
-            color: #667eea;
-            flex-shrink: 0;
+            color: #333;
         }
 
-        .toc-panel {
-            overflow: hidden;
-        }
-
-        #tocList {
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            margin-right: -0.5rem;
-            padding-right: 0.5rem;
-        }
-
-        /* Custom scrollbar for TOC */
-        #tocList::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        #tocList::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-
-        #tocList::-webkit-scrollbar-thumb {
-            background: #667eea;
-            border-radius: 4px;
-        }
-
-        #tocList::-webkit-scrollbar-thumb:hover {
-            background: #5563d1;
-        }
-
-        .toc-tree {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
-        .toc-node {
-            margin: 0.25rem 0;
-            user-select: none;
-        }
-
-        .toc-node-content {
-            display: flex;
-            align-items: center;
-            padding: 0.5rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-        }
-
-        .toc-node-content:hover {
-            background: #f8f9ff;
-            border-color: #667eea;
-        }
-
-        .toc-node-content.selected {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        .toc-node-content.selected .toc-page {
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .toc-expand-icon {
-            width: 20px;
-            height: 20px;
-            margin-right: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s ease;
-        }
-
-        .toc-expand-icon.expanded {
-            transform: rotate(90deg);
-        }
-
-        .toc-expand-icon.no-children {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .toc-title {
-            flex: 1;
-            font-weight: 500;
-        }
-
-        .toc-page {
-            font-size: 0.85rem;
+        .tool-description {
             color: #666;
-            margin-left: 0.5rem;
+            margin-bottom: 1.5rem;
         }
 
-        .toc-page-range {
-            font-size: 0.8rem;
-            color: #888;
-            margin-left: 0.5rem;
+        .tool-features {
+            list-style: none;
+            margin-bottom: 1.5rem;
         }
 
-        .toc-children {
-            margin-left: 1.5rem;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-
-        .toc-children.collapsed {
-            max-height: 0;
-        }
-
-        .toc-stats {
-            font-size: 0.85rem;
-            color: #666;
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: #f8f9ff;
-            border-radius: 6px;
-        }
-
-        .toc-item {
-            padding: 0.75rem;
+        .tool-features li {
             margin: 0.5rem 0;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 1px solid #e0e0e0;
+            padding-left: 1rem;
+            position: relative;
         }
 
-        .toc-item:hover {
-            background: #f8f9ff;
-            border-color: #667eea;
-            transform: translateX(5px);
+        .tool-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
         }
 
-        .toc-item.selected {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-
-        .toc-item-title {
-            font-weight: 500;
-        }
-
-        .toc-item-page {
-            font-size: 0.9rem;
-            opacity: 0.7;
-            margin-left: 0.5rem;
-        }
-
-        .page-range-input {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            margin: 1rem 0;
-            padding: 1rem;
-            background: #f8f9ff;
-            border-radius: 8px;
-            flex-shrink: 0;
-        }
-
-        .page-range-input input {
-            width: 80px;
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-
-        .text-output {
-            background: #f8f9ff;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-            flex: 1;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        /* Custom scrollbar for text output */
-        .text-output::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .text-output::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-
-        .text-output::-webkit-scrollbar-thumb {
-            background: #667eea;
-            border-radius: 4px;
-        }
-
-        .text-output::-webkit-scrollbar-thumb:hover {
-            background: #5563d1;
-        }
-
-        .text-panel {
-            overflow: hidden;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-            flex-shrink: 0;
-        }
-
-        .copy-btn {
-            background: #28a745;
-        }
-
-        .copy-btn:hover {
-            background: #218838;
-        }
-
-        .reset-btn {
-            background: #6c757d;
-        }
-
-        .reset-btn:hover {
-            background: #5a6268;
-        }
-
-        .download-pdf-btn {
-            background: #17a2b8;
-        }
-
-        .download-pdf-btn:hover {
-            background: #138496;
-        }
-
-        .extraction-mode {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        .mode-toggle {
-            display: flex;
-            background: #f8f9ff;
-            border-radius: 6px;
-            padding: 0.25rem;
-            border: 1px solid #e0e0e0;
-        }
-
-        .mode-toggle button {
-            padding: 0.5rem 1rem;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-
-        .mode-toggle button.active {
-            background: #667eea;
-            color: white;
-        }
-
-        .loading {
+        .tool-status {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            background: #28a745;
+            color: white;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .error-message {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 1rem;
-            border-radius: 6px;
-            margin: 1rem 0;
-        }
-
-        .success-message {
-            background: #d4edda;
-            color: #155724;
-            padding: 1rem;
-            border-radius: 6px;
-            margin: 1rem 0;
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+            margin-top: 3rem;
         }
 
         @media (max-width: 768px) {
-            .content-section {
-                grid-template-columns: 1fr;
+            h1 {
+                font-size: 2rem;
             }
             
-            .toc-panel, .text-panel {
-                height: 500px;
+            .tools-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -445,637 +133,45 @@
 <body>
     <header>
         <div class="container">
-            <h1>📄 PDF Slicer</h1>
-            <p class="subtitle">Extract table of contents and text from PDF documents</p>
+            <h1>🛠️ My Tools</h1>
+            <p class="subtitle">Personal utility hub for everyday tasks</p>
         </div>
     </header>
 
     <div class="container">
-        <div class="upload-section">
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📤</div>
-                <p>Drag and drop your PDF here or click to browse</p>
-                <input type="file" id="fileInput" accept=".pdf">
-            </div>
-        </div>
+        <div class="tools-grid">
+            <a href="/pdf-slicer" class="tool-card">
+                <div class="tool-icon">📄</div>
+                <h2 class="tool-title">PDF Slicer</h2>
+                <p class="tool-description">Extract table of contents and text from PDF documents. Crop and download specific sections.</p>
+                <ul class="tool-features">
+                    <li>Extract table of contents automatically</li>
+                    <li>Extract text from specific pages</li>
+                    <li>Download PDF sections as separate files</li>
+                    <li>Support for hierarchical document structure</li>
+                </ul>
+                <span class="tool-status">Available</span>
+            </a>
 
-        <div id="contentSection" class="content-section hidden">
-            <div class="toc-panel">
-                <h2>Table of Contents</h2>
-                <div id="tocList"></div>
-                
-                <div class="page-range-input">
-                    <label>Or enter page range:</label>
-                    <input type="number" id="startPage" min="1" placeholder="Start">
-                    <span>to</span>
-                    <input type="number" id="endPage" min="1" placeholder="End">
-                    <button class="btn btn-secondary" onclick="extractByPageRange()">Extract</button>
-                </div>
-            </div>
-
-            <div class="text-panel">
-                <h2>Extracted Text</h2>
-                <div class="extraction-mode">
-                    <label>Mode:</label>
-                    <div class="mode-toggle">
-                        <button id="textModeBtn" class="active" onclick="setExtractionMode('text')">Extract Text</button>
-                        <button id="pdfModeBtn" onclick="setExtractionMode('pdf')">Download PDF</button>
-                    </div>
-                </div>
-                <div id="textOutput" class="text-output hidden"></div>
-                <div class="action-buttons">
-                    <button id="copyBtn" class="btn copy-btn hidden" onclick="copyText()">📋 Copy to Clipboard</button>
-                    <button id="downloadPdfBtn" class="btn download-pdf-btn hidden" onclick="downloadPDF()">📥 Download PDF</button>
-                    <button id="resetBtn" class="btn reset-btn" onclick="resetSelection()">🔄 Reset Selection</button>
-                </div>
-            </div>
+            <a href="/transcriber" class="tool-card">
+                <div class="tool-icon">🎤</div>
+                <h2 class="tool-title">Audio Transcriber</h2>
+                <p class="tool-description">Transcribe audio files to text using Groq's Whisper API. Supports large files with automatic chunking.</p>
+                <ul class="tool-features">
+                    <li>High-quality Whisper transcription</li>
+                    <li>Support for files up to 19.5MB</li>
+                    <li>Automatic audio chunking</li>
+                    <li>Multiple audio formats supported</li>
+                </ul>
+                <span class="tool-status">Available</span>
+            </a>
         </div>
     </div>
 
-    <script>
-        let currentFile = null;
-        let currentFilePath = null;
-        let currentTotalPages = 0;
-        let currentTocTree = null;
-        let expandedNodes = new Set();
-        let selectedNode = null;
-        let extractionMode = 'text';
-        let currentSelection = null;
-
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const contentSection = document.getElementById('contentSection');
-        const tocList = document.getElementById('tocList');
-        const textOutput = document.getElementById('textOutput');
-        const copyBtn = document.getElementById('copyBtn');
-        const downloadPdfBtn = document.getElementById('downloadPdfBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const startPageInput = document.getElementById('startPage');
-        const endPageInput = document.getElementById('endPage');
-
-        // Upload area click handler
-        uploadArea.addEventListener('click', () => {
-            fileInput.click();
-        });
-
-        // File input change handler
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                uploadFile(file);
-            }
-        });
-
-        // Drag and drop handlers
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragging');
-        });
-
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragging');
-        });
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragging');
-            
-            const file = e.dataTransfer.files[0];
-            if (file && file.type === 'application/pdf') {
-                uploadFile(file);
-            } else {
-                showError('Please upload a PDF file');
-            }
-        });
-
-        async function uploadFile(file) {
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                showLoading(uploadArea, 'Uploading and analyzing PDF...');
-                
-                const response = await fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    currentFile = file;
-                    currentFilePath = data.filepath;
-                    currentTotalPages = data.total_pages;
-                    currentTocTree = data.toc_tree;
-                    
-                    // Update page range inputs
-                    startPageInput.max = currentTotalPages;
-                    endPageInput.max = currentTotalPages;
-                    startPageInput.placeholder = `1-${currentTotalPages}`;
-                    endPageInput.placeholder = `1-${currentTotalPages}`;
-                    
-                    displayTOC(data.toc_tree || data.toc);
-                    contentSection.classList.remove('hidden');
-                    showSuccess('PDF uploaded successfully!');
-                } else {
-                    showError(data.error || 'Failed to upload PDF');
-                }
-            } catch (error) {
-                showError('Error uploading file: ' + error.message);
-            } finally {
-                hideLoading(uploadArea);
-            }
-        }
-
-        function displayTOC(toc) {
-            tocList.innerHTML = '';
-            
-            if (!toc || toc.length === 0) {
-                tocList.innerHTML = '<p style="opacity: 0.6;">No table of contents found. Use page range to extract text.</p>';
-                return;
-            }
-
-            // Check if it's a tree structure or flat list
-            if (Array.isArray(toc) && toc[0] && toc[0].hasOwnProperty('children')) {
-                // Tree structure
-                const treeContainer = document.createElement('div');
-                treeContainer.className = 'toc-tree';
-                
-                // Expand all nodes by default for better UX
-                toc.forEach(node => {
-                    expandAllNodes(node);
-                });
-                
-                toc.forEach(node => {
-                    treeContainer.appendChild(createTreeNode(node));
-                });
-                
-                tocList.appendChild(treeContainer);
-                
-                // Add statistics
-                const stats = calculateTreeStats(toc);
-                const statsDiv = document.createElement('div');
-                statsDiv.className = 'toc-stats';
-                statsDiv.innerHTML = `
-                    <strong>Structure:</strong><br>
-                    Volumes: ${stats.volumes}<br>
-                    Chapters: ${stats.chapters}<br>
-                    Sections: ${stats.sections}<br>
-                    Total Items: ${stats.total}
-                `;
-                tocList.appendChild(statsDiv);
-            } else {
-                // Flat structure (fallback)
-                toc.forEach((item, index) => {
-                    const tocItem = document.createElement('div');
-                    tocItem.className = 'toc-item';
-                    tocItem.style.marginLeft = `${(item.level || 0) * 20}px`;
-                    
-                    tocItem.innerHTML = `
-                        <span class="toc-item-title">${item.title}</span>
-                        ${item.page ? `<span class="toc-item-page">Page ${item.page}</span>` : ''}
-                    `;
-                    
-                    tocItem.addEventListener('click', () => {
-                        selectTOCItem(tocItem, item);
-                    });
-                    
-                    tocList.appendChild(tocItem);
-                });
-            }
-        }
-
-        function expandAllNodes(node) {
-            expandedNodes.add(node.id);
-            if (node.children) {
-                node.children.forEach(child => expandAllNodes(child));
-            }
-        }
-
-        function createTreeNode(node, level = 0) {
-            const nodeDiv = document.createElement('div');
-            nodeDiv.className = 'toc-node';
-            nodeDiv.dataset.nodeId = node.id;
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'toc-node-content';
-            if (selectedNode === node.id) {
-                contentDiv.classList.add('selected');
-            }
-            
-            // Expand/collapse icon
-            const expandIcon = document.createElement('span');
-            expandIcon.className = 'toc-expand-icon';
-            if (!node.children || node.children.length === 0) {
-                expandIcon.classList.add('no-children');
-            } else {
-                expandIcon.innerHTML = '▶';
-                if (expandedNodes.has(node.id)) {
-                    expandIcon.classList.add('expanded');
-                }
-            }
-            
-            // Title
-            const titleSpan = document.createElement('span');
-            titleSpan.className = 'toc-title';
-            titleSpan.textContent = node.title;
-            
-            // Page info
-            const pageInfo = document.createElement('span');
-            if (node.start_page && node.end_page) {
-                pageInfo.className = 'toc-page-range';
-                const pageCount = node.end_page - node.start_page + 1;
-                pageInfo.textContent = `pp. ${node.start_page}-${node.end_page} (${pageCount} pages)`;
-            } else if (node.page) {
-                pageInfo.className = 'toc-page';
-                pageInfo.textContent = `p. ${node.page}`;
-            }
-            
-            contentDiv.appendChild(expandIcon);
-            contentDiv.appendChild(titleSpan);
-            contentDiv.appendChild(pageInfo);
-            
-            // Click handlers
-            expandIcon.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (node.children && node.children.length > 0) {
-                    toggleNode(node.id);
-                }
-            });
-            
-            contentDiv.addEventListener('click', () => {
-                selectTreeNode(node);
-            });
-            
-            nodeDiv.appendChild(contentDiv);
-            
-            // Children container
-            if (node.children && node.children.length > 0) {
-                const childrenDiv = document.createElement('div');
-                childrenDiv.className = 'toc-children';
-                if (!expandedNodes.has(node.id)) {
-                    childrenDiv.classList.add('collapsed');
-                }
-                
-                node.children.forEach(child => {
-                    childrenDiv.appendChild(createTreeNode(child, level + 1));
-                });
-                
-                nodeDiv.appendChild(childrenDiv);
-            }
-            
-            return nodeDiv;
-        }
-
-        function toggleNode(nodeId) {
-            if (expandedNodes.has(nodeId)) {
-                expandedNodes.delete(nodeId);
-            } else {
-                expandedNodes.add(nodeId);
-            }
-            
-            // Re-render the tree
-            displayTOC(currentTocTree);
-        }
-
-        function selectTreeNode(node) {
-            // Update selection
-            selectedNode = node.id;
-            currentSelection = {
-                title: node.title,
-                start_page: node.start_page,
-                end_page: node.end_page || node.page
-            };
-            
-            // Update UI
-            document.querySelectorAll('.toc-node-content').forEach(el => {
-                el.classList.remove('selected');
-            });
-            document.querySelector(`[data-node-id="${node.id}"] .toc-node-content`).classList.add('selected');
-            
-            // Handle based on extraction mode
-            if (extractionMode === 'text') {
-                // Extract text for the entire section (including all subsections)
-                if (node.start_page && node.end_page) {
-                    extractText(node.start_page, node.end_page);
-                } else if (node.page) {
-                    // For leaf nodes without end page, extract just that page
-                    extractText(node.page, node.page);
-                }
-            } else {
-                // PDF mode - show download button
-                textOutput.innerHTML = `
-                    <div style="text-align: center; padding: 2rem;">
-                        <h3>${node.title}</h3>
-                        <p>Pages ${node.start_page || node.page} - ${node.end_page || node.page}</p>
-                        <p style="margin-top: 1rem;">Click "Download PDF" to get this section as a separate PDF file.</p>
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 My Personal Tools. Built for productivity.</p>
                     </div>
-                `;
-                textOutput.classList.remove('hidden');
-                copyBtn.classList.add('hidden');
-                downloadPdfBtn.classList.remove('hidden');
-            }
-        }
-
-        function calculateTreeStats(nodes) {
-            let stats = { volumes: 0, chapters: 0, sections: 0, total: 0 };
-            
-            function countNodes(nodes, level = 0) {
-                nodes.forEach(node => {
-                    stats.total++;
-                    if (level === 0) stats.volumes++;
-                    else if (level === 1) stats.chapters++;
-                    else stats.sections++;
-                    
-                    if (node.children) {
-                        countNodes(node.children, level + 1);
-                    }
-                });
-            }
-            
-            countNodes(nodes);
-            return stats;
-        }
-
-        function selectTOCItem(element, item) {
-            // Remove previous selection
-            document.querySelectorAll('.toc-item').forEach(el => {
-                el.classList.remove('selected');
-            });
-            
-            // Add selection to clicked item
-            element.classList.add('selected');
-            
-            currentSelection = {
-                title: item.title,
-                start_page: item.page,
-                end_page: item.page
-            };
-            
-            // Extract text from the selected section
-            if (item.page) {
-                if (extractionMode === 'text') {
-                    extractText(item.page, item.page);
-                } else {
-                    textOutput.innerHTML = `
-                        <div style="text-align: center; padding: 2rem;">
-                            <h3>${item.title}</h3>
-                            <p>Page ${item.page}</p>
-                            <p style="margin-top: 1rem;">Click "Download PDF" to get this page as a separate PDF file.</p>
-                        </div>
-                    `;
-                    textOutput.classList.remove('hidden');
-                    copyBtn.classList.add('hidden');
-                    downloadPdfBtn.classList.remove('hidden');
-                }
-            }
-        }
-
-        async function extractText(startPage, endPage) {
-            try {
-                showLoading(textOutput, 'Extracting text...');
-                textOutput.classList.remove('hidden');
-                
-                const response = await fetch('/extract-text', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        filepath: currentFilePath,
-                        start_page: startPage,
-                        end_page: endPage
-                    })
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    textOutput.textContent = data.combined_text;
-                    copyBtn.classList.remove('hidden');
-                    downloadPdfBtn.classList.add('hidden');
-                } else {
-                    showError(data.error || 'Failed to extract text');
-                }
-            } catch (error) {
-                showError('Error extracting text: ' + error.message);
-            } finally {
-                hideLoading(textOutput);
-            }
-        }
-
-        function extractByPageRange() {
-            const start = parseInt(startPageInput.value);
-            const end = parseInt(endPageInput.value);
-            
-            if (!start || !end) {
-                showError('Please enter both start and end page numbers');
-                return;
-            }
-            
-            if (start > end) {
-                showError('Start page must be less than or equal to end page');
-                return;
-            }
-            
-            if (start < 1 || end > currentTotalPages) {
-                showError(`Page numbers must be between 1 and ${currentTotalPages}`);
-                return;
-            }
-            
-            // Clear TOC selection
-            document.querySelectorAll('.toc-item').forEach(el => {
-                el.classList.remove('selected');
-            });
-            document.querySelectorAll('.toc-node-content').forEach(el => {
-                el.classList.remove('selected');
-            });
-            selectedNode = null;
-            
-            currentSelection = {
-                title: `Pages ${start}-${end}`,
-                start_page: start,
-                end_page: end
-            };
-            
-            if (extractionMode === 'text') {
-                extractText(start, end);
-            } else {
-                textOutput.innerHTML = `
-                    <div style="text-align: center; padding: 2rem;">
-                        <h3>Custom Page Range</h3>
-                        <p>Pages ${start} - ${end}</p>
-                        <p style="margin-top: 1rem;">Click "Download PDF" to get these pages as a separate PDF file.</p>
-                    </div>
-                `;
-                textOutput.classList.remove('hidden');
-                copyBtn.classList.add('hidden');
-                downloadPdfBtn.classList.remove('hidden');
-            }
-        }
-
-        function setExtractionMode(mode) {
-            extractionMode = mode;
-            
-            // Update button states
-            document.getElementById('textModeBtn').classList.toggle('active', mode === 'text');
-            document.getElementById('pdfModeBtn').classList.toggle('active', mode === 'pdf');
-            
-            // Re-process current selection if any
-            if (currentSelection) {
-                if (mode === 'text') {
-                    extractText(currentSelection.start_page, currentSelection.end_page);
-                } else {
-                    textOutput.innerHTML = `
-                        <div style="text-align: center; padding: 2rem;">
-                            <h3>${currentSelection.title}</h3>
-                            <p>Pages ${currentSelection.start_page} - ${currentSelection.end_page}</p>
-                            <p style="margin-top: 1rem;">Click "Download PDF" to get this section as a separate PDF file.</p>
-                        </div>
-                    `;
-                    textOutput.classList.remove('hidden');
-                    copyBtn.classList.add('hidden');
-                    downloadPdfBtn.classList.remove('hidden');
-                }
-            }
-        }
-
-        function resetSelection() {
-            // Clear selections
-            document.querySelectorAll('.toc-item').forEach(el => {
-                el.classList.remove('selected');
-            });
-            document.querySelectorAll('.toc-node-content').forEach(el => {
-                el.classList.remove('selected');
-            });
-            
-            // Clear variables
-            selectedNode = null;
-            currentSelection = null;
-            
-            // Clear text output
-            textOutput.textContent = '';
-            textOutput.classList.add('hidden');
-            
-            // Hide action buttons
-            copyBtn.classList.add('hidden');
-            downloadPdfBtn.classList.add('hidden');
-            
-            // Clear page range inputs
-            startPageInput.value = '';
-            endPageInput.value = '';
-        }
-
-        async function downloadPDF() {
-            if (!currentSelection || !currentFilePath) {
-                showError('No section selected');
-                return;
-            }
-            
-            try {
-                showLoading(downloadPdfBtn, 'Generating PDF...');
-                
-                const response = await fetch('/crop-pdf', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        filepath: currentFilePath,
-                        start_page: currentSelection.start_page,
-                        end_page: currentSelection.end_page,
-                        title: currentSelection.title
-                    })
-                });
-                
-                if (response.ok) {
-                    // Get the blob from response
-                    const blob = await response.blob();
-                    
-                    // Create a download link
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    
-                    // Get filename from Content-Disposition header or use default
-                    const contentDisposition = response.headers.get('Content-Disposition');
-                    let filename = 'cropped.pdf';
-                    if (contentDisposition) {
-                        const match = contentDisposition.match(/filename="(.+)"/);
-                        if (match) filename = match[1];
-                    }
-                    
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                    
-                    showSuccess('PDF downloaded successfully!');
-                } else {
-                    const error = await response.json();
-                    showError(error.error || 'Failed to generate PDF');
-                }
-            } catch (error) {
-                showError('Error downloading PDF: ' + error.message);
-            } finally {
-                hideLoading(downloadPdfBtn);
-            }
-        }
-
-        async function copyText() {
-            try {
-                await navigator.clipboard.writeText(textOutput.textContent);
-                
-                // Show feedback
-                const originalText = copyBtn.textContent;
-                copyBtn.textContent = '✓ Copied!';
-                copyBtn.style.background = '#28a745';
-                
-                setTimeout(() => {
-                    copyBtn.textContent = originalText;
-                    copyBtn.style.background = '';
-                }, 2000);
-            } catch (error) {
-                showError('Failed to copy text');
-            }
-        }
-
-        function showLoading(element, message) {
-            const originalContent = element.innerHTML;
-            element.dataset.originalContent = originalContent;
-            element.innerHTML = `<div style="text-align: center;"><div class="loading"></div><p>${message}</p></div>`;
-        }
-
-        function hideLoading(element) {
-            if (element.dataset.originalContent) {
-                element.innerHTML = element.dataset.originalContent;
-                delete element.dataset.originalContent;
-            }
-        }
-
-        function showError(message) {
-            showMessage(message, 'error');
-        }
-
-        function showSuccess(message) {
-            showMessage(message, 'success');
-        }
-
-        function showMessage(message, type) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
-            messageDiv.textContent = message;
-            
-            // Insert after upload section
-            const uploadSection = document.querySelector('.upload-section');
-            uploadSection.parentNode.insertBefore(messageDiv, uploadSection.nextSibling);
-            
-            // Remove after 5 seconds
-            setTimeout(() => {
-                messageDiv.remove();
-            }, 5000);
-        }
-    </script>
+    </footer>
 </body>
 </html> 
