@@ -14,6 +14,8 @@ import uuid
 from pydub import AudioSegment
 import math
 from dotenv import load_dotenv
+import json
+from datetime import datetime
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,13 +25,15 @@ CORS(app)
 
 # Configuration
 UPLOAD_FOLDER = 'uploads'
+TRANSCRIPTIONS_FOLDER = 'transcriptions'
 ALLOWED_EXTENSIONS = {'pdf'}
 ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'm4a', 'aac', 'ogg', 'flac', 'wma', 'opus'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32MB max file size
 
-# Create upload folder if it doesn't exist
+# Create folders if they don't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(TRANSCRIPTIONS_FOLDER, exist_ok=True)
 
 # Initialize Groq client
 client = Groq()
@@ -569,6 +573,102 @@ def summarize_transcript():
         })
     except Exception as e:
         return jsonify({'error': f'Failed to summarize transcript: {str(e)}'}), 500
+
+def save_transcription(filename, transcription, cleaned=None, summary=None):
+    """Save transcription to a JSON file"""
+    transcription_id = str(uuid.uuid4())
+    timestamp = datetime.now().isoformat()
+    
+    transcription_data = {
+        'id': transcription_id,
+        'filename': filename,
+        'timestamp': timestamp,
+        'transcription': transcription,
+        'cleaned': cleaned,
+        'summary': summary
+    }
+    
+    # Save to individual file
+    file_path = os.path.join(TRANSCRIPTIONS_FOLDER, f'{transcription_id}.json')
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(transcription_data, f, ensure_ascii=False, indent=2)
+    
+    return transcription_id
+
+def load_all_transcriptions():
+    """Load all saved transcriptions"""
+    transcriptions = []
+    
+    if not os.path.exists(TRANSCRIPTIONS_FOLDER):
+        return transcriptions
+    
+    for filename in os.listdir(TRANSCRIPTIONS_FOLDER):
+        if filename.endswith('.json'):
+            file_path = os.path.join(TRANSCRIPTIONS_FOLDER, filename)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    transcriptions.append(data)
+            except Exception as e:
+                print(f"Error loading transcription {filename}: {str(e)}")
+    
+    # Sort by timestamp (newest first)
+    transcriptions.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    return transcriptions
+
+@app.route('/save-transcription', methods=['POST'])
+def save_transcription_endpoint():
+    data = request.json
+    filename = data.get('filename', 'Unknown')
+    transcription = data.get('transcription')
+    cleaned = data.get('cleaned')
+    summary = data.get('summary')
+    
+    if not transcription:
+        return jsonify({'error': 'No transcription provided'}), 400
+    
+    try:
+        transcription_id = save_transcription(filename, transcription, cleaned, summary)
+        return jsonify({
+            'id': transcription_id,
+            'message': 'Transcription saved successfully'
+        })
+    except Exception as e:
+        return jsonify({'error': f'Failed to save transcription: {str(e)}'}), 500
+
+@app.route('/get-transcriptions', methods=['GET'])
+def get_transcriptions():
+    try:
+        transcriptions = load_all_transcriptions()
+        return jsonify({'transcriptions': transcriptions})
+    except Exception as e:
+        return jsonify({'error': f'Failed to load transcriptions: {str(e)}'}), 500
+
+@app.route('/get-transcription/<transcription_id>', methods=['GET'])
+def get_transcription(transcription_id):
+    try:
+        file_path = os.path.join(TRANSCRIPTIONS_FOLDER, f'{transcription_id}.json')
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'Transcription not found'}), 404
+        
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({'error': f'Failed to load transcription: {str(e)}'}), 500
+
+@app.route('/delete-transcription/<transcription_id>', methods=['DELETE'])
+def delete_transcription(transcription_id):
+    try:
+        file_path = os.path.join(TRANSCRIPTIONS_FOLDER, f'{transcription_id}.json')
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'Transcription not found'}), 404
+        
+        os.remove(file_path)
+        return jsonify({'message': 'Transcription deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': f'Failed to delete transcription: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=9001) 

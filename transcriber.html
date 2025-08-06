@@ -242,6 +242,152 @@
             flex-wrap: wrap;
         }
 
+        .saved-transcriptions {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+        }
+
+        .saved-transcriptions h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .transcription-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .transcription-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .transcription-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .transcription-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .transcription-item {
+            background: #f8f9ff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+        }
+
+        .transcription-item:hover {
+            background: #f0f2ff;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .transcription-item-info {
+            flex: 1;
+        }
+
+        .transcription-item-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+
+        .transcription-item-date {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .transcription-item-badges {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-raw {
+            background: #e8f4fd;
+            color: #0c5460;
+        }
+
+        .badge-cleaned {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-summary {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .transcription-item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            background: none;
+            border: 1px solid #ddd;
+            color: #666;
+            padding: 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn-icon:hover {
+            background: #f8f9ff;
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .btn-icon.delete:hover {
+            background: #ffeaea;
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .save-btn {
+            background: #28a745;
+        }
+
+        .save-btn:hover {
+            background: #218838;
+        }
+
         .progress-section {
             margin: 2rem 0;
             background: white;
@@ -567,6 +713,9 @@
                 <button id="summarizeBtn" class="btn" onclick="summarizeTranscription()">
                     📝 Summarize with AI
                 </button>
+                <button id="saveBtn" class="btn save-btn" onclick="saveCurrentTranscription()">
+                    💾 Save Transcription
+                </button>
                 <button id="copyBtn" class="btn" onclick="copyCurrentTab()">
                     📋 Copy to Clipboard
                 </button>
@@ -578,6 +727,16 @@
                 </button>
             </div>
         </div>
+
+        <div id="savedTranscriptions" class="saved-transcriptions">
+            <h3>📚 Saved Transcriptions</h3>
+            <div id="transcriptionList" class="transcription-list">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📭</div>
+                    <p>No saved transcriptions yet</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -587,6 +746,8 @@
         let summaryResult = '';
         let isTranscribing = false;
         let currentTab = 'raw';
+        let currentFileName = '';
+        let savedTranscriptionsList = [];
 
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
@@ -657,6 +818,7 @@
             }
 
             currentFile = file;
+            currentFileName = file.name;
             fileName.textContent = file.name;
             fileSize.textContent = formatFileSize(file.size);
             
@@ -1117,6 +1279,177 @@
                 messageDiv.remove();
             }, 5000);
         }
+
+        async function saveCurrentTranscription() {
+            if (!transcriptionResult) {
+                showError('No transcription to save');
+                return;
+            }
+
+            const saveBtn = document.getElementById('saveBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<div class="loading"></div> Saving...';
+            saveBtn.disabled = true;
+
+            try {
+                const response = await fetch('/save-transcription', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filename: currentFileName || 'Unknown File',
+                        transcription: transcriptionResult,
+                        cleaned: cleanedResult || null,
+                        summary: summaryResult || null
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('Transcription saved successfully!');
+                    loadSavedTranscriptions(); // Refresh the list
+                } else {
+                    throw new Error(result.error || 'Failed to save transcription');
+                }
+            } catch (error) {
+                showError('Failed to save: ' + error.message);
+            } finally {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+
+        async function loadSavedTranscriptions() {
+            try {
+                const response = await fetch('/get-transcriptions');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    savedTranscriptionsList = result.transcriptions;
+                    displaySavedTranscriptions();
+                } else {
+                    console.error('Failed to load transcriptions');
+                }
+            } catch (error) {
+                console.error('Error loading transcriptions:', error);
+            }
+        }
+
+        function displaySavedTranscriptions() {
+            const listContainer = document.getElementById('transcriptionList');
+            
+            if (savedTranscriptionsList.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <p>No saved transcriptions yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = '';
+            
+            savedTranscriptionsList.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'transcription-item';
+                
+                const date = new Date(item.timestamp);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                
+                const badges = [];
+                if (item.transcription) badges.push('<span class="badge badge-raw">Raw</span>');
+                if (item.cleaned) badges.push('<span class="badge badge-cleaned">Cleaned</span>');
+                if (item.summary) badges.push('<span class="badge badge-summary">Summary</span>');
+                
+                itemDiv.innerHTML = `
+                    <div class="transcription-item-info" onclick="loadTranscription('${item.id}')">
+                        <div class="transcription-item-title">${item.filename}</div>
+                        <div class="transcription-item-date">${formattedDate}</div>
+                        <div class="transcription-item-badges">
+                            ${badges.join('')}
+                        </div>
+                    </div>
+                    <div class="transcription-item-actions">
+                        <button class="btn-icon" onclick="event.stopPropagation(); loadTranscription('${item.id}')" title="View">
+                            👁️
+                        </button>
+                        <button class="btn-icon delete" onclick="event.stopPropagation(); deleteTranscription('${item.id}')" title="Delete">
+                            🗑️
+                        </button>
+                    </div>
+                `;
+                
+                listContainer.appendChild(itemDiv);
+            });
+        }
+
+        async function loadTranscription(id) {
+            try {
+                const response = await fetch(`/get-transcription/${id}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Load the transcription data
+                    transcriptionResult = data.transcription || '';
+                    cleanedResult = data.cleaned || '';
+                    summaryResult = data.summary || '';
+                    currentFileName = data.filename || 'Unknown File';
+                    
+                    // Update the UI
+                    rawTranscript.textContent = transcriptionResult;
+                    cleanedTranscript.textContent = cleanedResult;
+                    summaryTranscript.textContent = summaryResult;
+                    
+                    // Show transcription section
+                    transcriptionSection.classList.remove('hidden');
+                    
+                    // Switch to appropriate tab
+                    if (transcriptionResult) {
+                        switchTab('raw');
+                    }
+                    
+                    // Scroll to transcription
+                    transcriptionSection.scrollIntoView({ behavior: 'smooth' });
+                    
+                    showSuccess('Transcription loaded successfully!');
+                } else {
+                    showError('Failed to load transcription');
+                }
+            } catch (error) {
+                showError('Error loading transcription: ' + error.message);
+            }
+        }
+
+        async function deleteTranscription(id) {
+            if (!confirm('Are you sure you want to delete this transcription?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/delete-transcription/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showSuccess('Transcription deleted successfully!');
+                    loadSavedTranscriptions(); // Refresh the list
+                } else {
+                    showError('Failed to delete transcription');
+                }
+            } catch (error) {
+                showError('Error deleting transcription: ' + error.message);
+            }
+        }
+
+        // Load saved transcriptions on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSavedTranscriptions();
+        });
     </script>
 </body>
 </html> 
